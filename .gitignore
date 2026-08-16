@@ -1,0 +1,8 @@
+/build/
+/superchess
+*.o
+*.d
+
+
+CLAUDE.md 
+prototypes/
