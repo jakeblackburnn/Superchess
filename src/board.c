@@ -1,15 +1,15 @@
 #include "superchess.h"
 
-#define COLOR(idx) (idx / 8 < 4 ? White : Black)
+Board b;
+Board temp;
+Color turn = White;
 
 int get_piece_idx(int rank, int file) {
     return (rank * 8) + file;
 }
 
-Board create_board(void) {
+void create_board(void) {
     int i;
-    Board b;
-
     for (i = 0; i < 64; i++)
         if (i / 8 == 0 || i / 8 == 7) {
             switch (i % 8) {
@@ -42,8 +42,6 @@ Board create_board(void) {
             b.squares[i] = create_piece(Pawn, COLOR(i));
         else
             b.squares[i] = create_piece(Empty, COLOR(i));
-
-    return b;
 }
 
 static const char *GLYPHS[2][6] = {
@@ -54,7 +52,6 @@ static const char *GLYPHS[2][6] = {
 void print_board(Board b, Color color) {
     int rank, file;
     Piece p;
-
     if (color == White) {
         for (rank = 7; rank >= 0; rank--) {
             printf("%d ", rank + 1);
@@ -68,9 +65,7 @@ void print_board(Board b, Color color) {
             printf("\n");
         }
         printf("  a b c d e f g h\n");
-
     } else {
-
         for (rank = 0; rank < 8; rank++) {
             printf("%d ", rank + 1);
             for (file = 7; file >= 0; file--) {

@@ -4,5 +4,6 @@
 *.d
 
 
-CLAUDE.md 
+CLAUDE.md
 prototypes/
+design/
