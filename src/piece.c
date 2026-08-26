@@ -1,10 +1,9 @@
 #include "superchess.h"
-// extern Board b;
-// extern Board temp;
 
-int pos;
-int valid_moves[BOARD_SIZE];
-int valid_move_count = 0;
+const char *GLYPHS[2][6] = {
+    {"♙", "♘", "♗", "♖", "♕", "♔"},
+    {"♟", "♞", "♝", "♜", "♛", "♚"},
+};
 
 const int KNIGHT_DR[8] = { 1,  1, -1, -1,  2,  2, -2, -2 };
 const int KNIGHT_DF[8] = { 2, -2,  2, -2,  1, -1,  1, -1 };
@@ -17,19 +16,15 @@ const int ROOK_DF[4]   = {  0,  0,  1, -1 };
 const int PAWN_CAPTURE_DF[2] = { -1, 1 };
 
 Piece create_piece(PieceType type, Color color) {
-    return (Piece){type, color, 0, 0};
+    return (Piece){type, color, False, False};
 }
 
-PieceType get_piece_type(int pos) {
-    return b.squares[pos].type;
-}
-
-void gen_pawn_moves(int pos, int *moves, int *num_moves) {
+void gen_pawn_moves(Board *board, int pos, int *moves, int *num_moves) {
     *num_moves = 0;
-    if (get_piece_type(pos) != Pawn)
+    if (board->squares[pos].type != Pawn)
         return;
 
-    Piece piece = b.squares[pos];
+    Piece piece = board->squares[pos];
     int rank = pos / 8;
     int file = pos % 8;
     int dir = (piece.color == White) ? 1 : -1;
@@ -39,7 +34,7 @@ void gen_pawn_moves(int pos, int *moves, int *num_moves) {
     int r1 = rank + dir;
     if (r1 >= 0 && r1 <= 7) {
         int idx1 = get_piece_idx(r1, file);
-        if (b.squares[idx1].type == Empty) {
+        if (board->squares[idx1].type == Empty) {
             moves[(*num_moves)++] = idx1;
 
             // Double push, only from the starting rank and only if both
@@ -47,7 +42,7 @@ void gen_pawn_moves(int pos, int *moves, int *num_moves) {
             if (rank == start_rank) {
                 int r2 = rank + 2 * dir;
                 int idx2 = get_piece_idx(r2, file);
-                if (b.squares[idx2].type == Empty)
+                if (board->squares[idx2].type == Empty)
                     moves[(*num_moves)++] = idx2;
             }
         }
@@ -61,7 +56,7 @@ void gen_pawn_moves(int pos, int *moves, int *num_moves) {
             continue;
 
         int idx = get_piece_idx(r, f);
-        Piece target = b.squares[idx];
+        Piece target = board->squares[idx];
         if (target.type != Empty && target.color != piece.color) {
             moves[(*num_moves)++] = idx;
             continue;
@@ -70,9 +65,9 @@ void gen_pawn_moves(int pos, int *moves, int *num_moves) {
         // En passant: target square is empty, but the square beside us
         // (same rank as `pos`) holds an enemy pawn that just double-pushed.
         int adj_idx = get_piece_idx(rank, f);
-        Piece adjacent = b.squares[adj_idx];
+        Piece adjacent = board->squares[adj_idx];
         if (target.type == Empty && adjacent.type == Pawn &&
-            adjacent.color != piece.color && adjacent.justmoved)
+            adjacent.color != piece.color && adjacent.passable)
             moves[(*num_moves)++] = idx;
     }
 
@@ -81,8 +76,8 @@ void gen_pawn_moves(int pos, int *moves, int *num_moves) {
     // piece to promote to comes from `special` in getmove(), not here.
 }
 
-void gen_knight_moves(int pos, int *moves, int *num_moves) {
-    Piece piece = b.squares[pos];
+void gen_knight_moves(Board *board, int pos, int *moves, int *num_moves) {
+    Piece piece = board->squares[pos];
     int rank = pos / 8;
     int file = pos % 8;
 
@@ -94,14 +89,14 @@ void gen_knight_moves(int pos, int *moves, int *num_moves) {
             continue;
 
         int idx = get_piece_idx(r, f);
-        Piece target = b.squares[idx];
+        Piece target = board->squares[idx];
         if (target.type == Empty || target.color != piece.color)
             moves[(*num_moves)++] = idx;
     }
 }
 
-static void slide(int pos, const int *dr, const int *df, int num_dirs, int *moves, int *num_moves) {
-    Piece piece = b.squares[pos];
+static void slide(Board *board, int pos, const int *dr, const int *df, int num_dirs, int *moves, int *num_moves) {
+    Piece piece = board->squares[pos];
     int rank = pos / 8;
     int file = pos % 8;
 
@@ -116,7 +111,7 @@ static void slide(int pos, const int *dr, const int *df, int num_dirs, int *move
                 break;
 
             int idx = get_piece_idx(r, f);
-            Piece target = b.squares[idx];
+            Piece target = board->squares[idx];
             if (target.type == Empty) {
                 moves[(*num_moves)++] = idx;
                 continue;
@@ -128,20 +123,20 @@ static void slide(int pos, const int *dr, const int *df, int num_dirs, int *move
     }
 }
 
-void gen_bishop_moves(int pos, int *moves, int *num_moves) {
-    slide(pos, BISHOP_DR, BISHOP_DF, 4, moves, num_moves);
+void gen_bishop_moves(Board *board, int pos, int *moves, int *num_moves) {
+    slide(board, pos, BISHOP_DR, BISHOP_DF, 4, moves, num_moves);
 }
 
-void gen_rook_moves(int pos, int *moves, int *num_moves) {
-    slide(pos, ROOK_DR, ROOK_DF, 4, moves, num_moves);
+void gen_rook_moves(Board *board, int pos, int *moves, int *num_moves) {
+    slide(board, pos, ROOK_DR, ROOK_DF, 4, moves, num_moves);
 }
 
-void gen_queen_moves(int pos, int *moves, int *num_moves) {
-    slide(pos, KING_DR, KING_DF, 8, moves, num_moves); // same 8 directions as the king, but sliding
+void gen_queen_moves(Board *board, int pos, int *moves, int *num_moves) {
+    slide(board, pos, KING_DR, KING_DF, 8, moves, num_moves); // same 8 directions as the king, but sliding
 }
 
-void gen_king_moves(int pos, int *moves, int *num_moves) {
-    Piece piece = b.squares[pos];
+void gen_king_moves(Board *board, int pos, int *moves, int *num_moves) {
+    Piece piece = board->squares[pos];
     int rank = pos / 8;
     int file = pos % 8;
 
@@ -153,7 +148,7 @@ void gen_king_moves(int pos, int *moves, int *num_moves) {
             continue;
 
         int idx = get_piece_idx(r, f);
-        Piece target = b.squares[idx];
+        Piece target = board->squares[idx];
         if (target.type == Empty || target.color != piece.color)
             moves[(*num_moves)++] = idx;
     }

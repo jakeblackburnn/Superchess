@@ -1,5 +1,6 @@
 /build/
 /superchess
+/game_history/
 *.o
 *.d
 
