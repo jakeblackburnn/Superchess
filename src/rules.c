@@ -5,9 +5,10 @@
 static const char *PROMO_CHARS = "qbrnk";
 
 int is_square_attacked(Board *board, int idx, Color by) {
-    int rank = idx / 8;
-    int file = idx % 8;
+    int rank = RANK(idx);
+    int file = FILE(idx);
 
+    // pawn
     int pawn_dr = (by == White) ? -1 : 1;
     for (int i = 0; i < 2; i++) {
         int r = rank + pawn_dr;
@@ -19,6 +20,7 @@ int is_square_attacked(Board *board, int idx, Color by) {
             return 1;
     }
 
+    // knight
     for (int i = 0; i < 8; i++) {
         int r = rank + KNIGHT_DR[i];
         int f = file + KNIGHT_DF[i];
@@ -29,6 +31,7 @@ int is_square_attacked(Board *board, int idx, Color by) {
             return 1;
     }
 
+    // king
     for (int i = 0; i < 8; i++) {
         int r = rank + KING_DR[i];
         int f = file + KING_DF[i];
@@ -39,6 +42,7 @@ int is_square_attacked(Board *board, int idx, Color by) {
             return 1;
     }
 
+    // bishop
     for (int i = 0; i < 4; i++) {
         int r = rank, f = file;
         for (;;) {
@@ -55,6 +59,7 @@ int is_square_attacked(Board *board, int idx, Color by) {
         }
     }
 
+    // rook
     for (int i = 0; i < 4; i++) {
         int r = rank, f = file;
         for (;;) {
@@ -88,9 +93,9 @@ static int is_castle_legal(Board *board, int from, int to, Piece piece) {
     if (piece.type != King || piece.hasmoved)
         return 0;
 
-    int rank = from / 8;
-    int from_file = from % 8;
-    int to_file = to % 8;
+    int rank = RANK(from);
+    int from_file = FILE(from);
+    int to_file = FILE(to);
     if (to != get_piece_idx(rank, 6) && to != get_piece_idx(rank, 2))
         return 0;
 
@@ -133,7 +138,7 @@ int is_legal_move(Board *board, int from, int to, char special) {
         if (!found)
             return 0;
 
-        int to_rank = to / 8;
+        int to_rank = RANK(to);
         int back_rank = (piece.color == White) ? 7 : 0;
         if (special != '\0' && strchr(PROMO_CHARS, special)) {
             if (piece.type != Pawn || to_rank != back_rank)
@@ -164,19 +169,12 @@ int has_legal_moves(Board *board, Color side) {
         gen_moves_for_piece(board, pos, moves, &num_moves);
         int back_rank = (side == White) ? 7 : 0;
         for (int i = 0; i < num_moves; i++) {
-            int to_rank = moves[i] / 8;
+            int to_rank = RANK(moves[i]);
             char special = (piece.type == Pawn && to_rank == back_rank) ? 'q' : '\0';
             if (is_legal_move(board, pos, moves[i], special))
                 return 1;
         }
-
-        if (piece.type == King) {
-            int rank = pos / 8;
-            if (is_legal_move(board, pos, get_piece_idx(rank, 6), 'c'))
-                return 1;
-            if (is_legal_move(board, pos, get_piece_idx(rank, 2), 'c'))
-                return 1;
-        }
+    // no need to check castling since other king moves should exist and are already checked
     }
 
     return 0;

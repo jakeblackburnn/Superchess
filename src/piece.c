@@ -21,12 +21,10 @@ Piece create_piece(PieceType type, Color color) {
 
 void gen_pawn_moves(Board *board, int pos, int *moves, int *num_moves) {
     *num_moves = 0;
-    if (board->squares[pos].type != Pawn)
-        return;
-
     Piece piece = board->squares[pos];
-    int rank = pos / 8;
-    int file = pos % 8;
+    int rank = RANK(pos);
+    int file = FILE(pos);
+
     int dir = (piece.color == White) ? 1 : -1;
     int start_rank = (piece.color == White) ? 1 : 6;
 
@@ -37,8 +35,7 @@ void gen_pawn_moves(Board *board, int pos, int *moves, int *num_moves) {
         if (board->squares[idx1].type == Empty) {
             moves[(*num_moves)++] = idx1;
 
-            // Double push, only from the starting rank and only if both
-            // squares ahead are clear.
+            // double push
             if (rank == start_rank) {
                 int r2 = rank + 2 * dir;
                 int idx2 = get_piece_idx(r2, file);
@@ -49,7 +46,7 @@ void gen_pawn_moves(Board *board, int pos, int *moves, int *num_moves) {
     }
 
     // Diagonal captures (including en passant).
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i <= 1; i++) {
         int r = rank + dir;
         int f = file + PAWN_CAPTURE_DF[i];
         if (r < 0 || r > 7 || f < 0 || f > 7)
@@ -62,26 +59,22 @@ void gen_pawn_moves(Board *board, int pos, int *moves, int *num_moves) {
             continue;
         }
 
-        // En passant: target square is empty, but the square beside us
-        // (same rank as `pos`) holds an enemy pawn that just double-pushed.
+        // en passant
         int adj_idx = get_piece_idx(rank, f);
         Piece adjacent = board->squares[adj_idx];
         if (target.type == Empty && adjacent.type == Pawn &&
             adjacent.color != piece.color && adjacent.passable)
             moves[(*num_moves)++] = idx;
     }
-
-    // Promotion is not a distinct target square: reaching the back rank
-    // via a push/capture above already yields the right index. Which
-    // piece to promote to comes from `special` in getmove(), not here.
+    // promotion handled in is_legal_move()
 }
 
 void gen_knight_moves(Board *board, int pos, int *moves, int *num_moves) {
-    Piece piece = board->squares[pos];
-    int rank = pos / 8;
-    int file = pos % 8;
-
     *num_moves = 0;
+    Piece piece = board->squares[pos];
+    int rank = RANK(pos);
+    int file = FILE(pos);
+
     for (int i = 0; i < 8; i++) {
         int r = rank + KNIGHT_DR[i];
         int f = file + KNIGHT_DF[i];
@@ -96,11 +89,11 @@ void gen_knight_moves(Board *board, int pos, int *moves, int *num_moves) {
 }
 
 static void slide(Board *board, int pos, const int *dr, const int *df, int num_dirs, int *moves, int *num_moves) {
-    Piece piece = board->squares[pos];
-    int rank = pos / 8;
-    int file = pos % 8;
-
     *num_moves = 0;
+    Piece piece = board->squares[pos];
+    int rank = RANK(pos);
+    int file = FILE(pos);
+
     for (int i = 0; i < num_dirs; i++) {
         int r = rank;
         int f = file;
@@ -136,11 +129,11 @@ void gen_queen_moves(Board *board, int pos, int *moves, int *num_moves) {
 }
 
 void gen_king_moves(Board *board, int pos, int *moves, int *num_moves) {
-    Piece piece = board->squares[pos];
-    int rank = pos / 8;
-    int file = pos % 8;
-
     *num_moves = 0;
+    Piece piece = board->squares[pos];
+    int rank = RANK(pos);
+    int file = FILE(pos);
+
     for (int i = 0; i < 8; i++) {
         int r = rank + KING_DR[i];
         int f = file + KING_DF[i];
@@ -153,8 +146,5 @@ void gen_king_moves(Board *board, int pos, int *moves, int *num_moves) {
             moves[(*num_moves)++] = idx;
     }
 
-    // Castling ('c') is intentionally not generated here: it needs
-    // hasmoved/rook-position/attacked-square state beyond a single
-    // king square, so it's handled as a separate check once
-    // attacked-square detection exists.
+    // castling and check detection handled in is_legal_move()
 }

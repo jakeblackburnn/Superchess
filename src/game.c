@@ -85,7 +85,7 @@ void start_game(Board *board, GameResult *result, char *metafile_path, char *pla
         int to = str_to_idx(&buf[2]);
         char special = (strlen(buf) == 5) ? buf[4] : '\0';
 
-        if (board->squares[from].color != turn) {
+        if (board->squares[from].color != turn || from == to) {
             printf("illegal move\n");
             continue;
         }
