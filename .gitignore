@@ -1,9 +1,5 @@
-/build/
-/superchess
-/game_history/
 *.o
 *.d
-
 
 CLAUDE.md
 prototypes/

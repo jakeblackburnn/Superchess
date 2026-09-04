@@ -45,8 +45,11 @@ void write_metafile(GameResult *result) {
     if (result->outcome == Checkmate)
         snprintf(out, sizeof(out), "checkmate \xe2\x80\x94 %s wins\nturns: %d\nboard: %s\n",
                  result->winner == White ? "white" : "black", result->turn_count, fen);
-    else
+    else if (result->outcome == Stalemate)
         snprintf(out, sizeof(out), "stalemate\nturns: %d\nboard: %s\n",
+                 result->turn_count, fen);
+    else
+        snprintf(out, sizeof(out), "draw \xe2\x80\x94 insufficient material\nturns: %d\nboard: %s\n",
                  result->turn_count, fen);
 
     write_to_file(result->metafile, out);
@@ -111,6 +114,11 @@ void start_game(Board *board, GameResult *result, char *metafile_path, char *pla
         if (is_stalemate(board, turn)) {
             result->outcome = Stalemate;
             printf("stalemate\n");
+            break;
+        }
+        if (is_insufficient_material(board)) {
+            result->outcome = Draw;
+            printf("draw \xe2\x80\x94 insufficient material\n");
             break;
         }
     }

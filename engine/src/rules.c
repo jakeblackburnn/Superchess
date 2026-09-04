@@ -187,3 +187,23 @@ int is_checkmate(Board *board, Color side) {
 int is_stalemate(Board *board, Color side) {
     return !is_king_in_check(board, side) && !has_legal_moves(board, side);
 }
+
+// Draw by insufficient mating material: king vs king, or king vs king with
+// one lone minor piece (bishop or knight) on either side. Doesn't chase the
+// full FIDE dead-position rule (e.g. same-colored bishops on both sides) —
+// this covers the trivial cases that would otherwise stall a game forever.
+int is_insufficient_material(Board *board) {
+    int minor_count = 0;
+
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        PieceType type = board->squares[i].type;
+        if (type == Empty || type == King)
+            continue;
+        if (type != Bishop && type != Knight)
+            return 0;
+        if (++minor_count > 1)
+            return 0;
+    }
+
+    return 1;
+}

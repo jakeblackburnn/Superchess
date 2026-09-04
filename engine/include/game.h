@@ -11,6 +11,7 @@
 typedef enum {
     Checkmate,
     Stalemate,
+    Draw, // insufficient mating material
 } Outcome;
 
 typedef struct {

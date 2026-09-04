@@ -10,5 +10,6 @@ int has_legal_moves(Board *, Color);
 
 int is_checkmate(Board *, Color);
 int is_stalemate(Board *, Color);
+int is_insufficient_material(Board *);
 
 #endif

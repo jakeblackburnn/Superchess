@@ -10,6 +10,7 @@
 #include "rules.h"
 #include "utils.h"
 #include "game.h"
+#include "ffi.h"
 
 int main(int, char **);
 
