@@ -99,6 +99,9 @@ class Engine:
             return None
         return Color(lib.sc_winner(self._handle))
 
+    def halfmove_clock(self) -> int:
+        return lib.sc_halfmove_clock(self._handle)
+
     def in_check(self) -> bool:
         return bool(lib.sc_in_check(self._handle))
 
@@ -123,3 +126,11 @@ class Engine:
         buf = (FfiSquare * 64)()
         lib.sc_board_array(self._handle, buf)
         return [SquareState(sq) for sq in buf]
+
+    def clone(self) -> "Engine":
+        """Independent copy of this game, for MCTS to explore without mutating the original."""
+        cloned = object.__new__(Engine)
+        cloned._handle = lib.sc_clone_game(self._handle)
+        if not cloned._handle:
+            raise MemoryError("sc_clone_game returned NULL")
+        return cloned

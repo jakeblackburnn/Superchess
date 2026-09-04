@@ -58,6 +58,9 @@ lib.sc_outcome.restype = ctypes.c_int
 lib.sc_winner.argtypes = [GamePtr]
 lib.sc_winner.restype = ctypes.c_int
 
+lib.sc_halfmove_clock.argtypes = [GamePtr]
+lib.sc_halfmove_clock.restype = ctypes.c_int
+
 lib.sc_in_check.argtypes = [GamePtr]
 lib.sc_in_check.restype = ctypes.c_int
 
@@ -69,3 +72,6 @@ lib.sc_make_move.restype = ctypes.c_int
 
 lib.sc_board_array.argtypes = [GamePtr, ctypes.POINTER(FfiSquare)]
 lib.sc_board_array.restype = None
+
+lib.sc_clone_game.argtypes = [GamePtr]
+lib.sc_clone_game.restype = GamePtr
