@@ -1,7 +1,15 @@
 #include "superchess.h"
 #include "ffi.h"
+#include "zobrist.h"
 #include <stdlib.h>
 #include <string.h>
+
+// Bounds the position-history table used for repetition detection. Well
+// past any game self-play will realistically reach; the Python-side
+// max-ply cutoff is the real backstop for pathological games, so once a
+// game exceeds this, repetition detection simply stops recording further
+// history rather than doing anything unsafe.
+#define MAX_HISTORY 300
 
 struct Game {
     Board board;
@@ -9,7 +17,30 @@ struct Game {
     int fullmove_number;
     FfiOutcome outcome;
     Color winner; // valid only when outcome == SC_CHECKMATE
+    int halfmove_clock; // plies since the last pawn move or capture
+    unsigned long long hash_history[MAX_HISTORY];
+    int history_len;
 };
+
+static int count_repetitions(Game *game) {
+    if (game->history_len == 0)
+        return 0;
+
+    unsigned long long current = game->hash_history[game->history_len - 1];
+    int count = 0;
+    for (int i = 0; i < game->history_len; i++) {
+        if (game->hash_history[i] == current)
+            count++;
+    }
+    return count;
+}
+
+static void record_position(Game *game) {
+    if (game->history_len < MAX_HISTORY) {
+        game->hash_history[game->history_len++] =
+            zobrist_hash(&game->board, game->turn);
+    }
+}
 
 static void refresh_outcome(Game *game) {
     if (is_checkmate(&game->board, game->turn)) {
@@ -18,6 +49,10 @@ static void refresh_outcome(Game *game) {
     } else if (is_stalemate(&game->board, game->turn)) {
         game->outcome = SC_STALEMATE;
     } else if (is_insufficient_material(&game->board)) {
+        game->outcome = SC_DRAW;
+    } else if (game->halfmove_clock >= 100) {
+        game->outcome = SC_DRAW;
+    } else if (count_repetitions(game) >= 3) {
         game->outcome = SC_DRAW;
     } else {
         game->outcome = SC_ONGOING;
@@ -36,12 +71,23 @@ void sc_free_game(Game *game) {
     free(game);
 }
 
+Game *sc_clone_game(Game *game) {
+    Game *clone = malloc(sizeof(Game));
+    if (!clone)
+        return NULL;
+    memcpy(clone, game, sizeof(Game));
+    return clone;
+}
+
 void sc_reset_game(Game *game) {
     reset_board(&game->board);
     game->turn = White;
     game->fullmove_number = 0;
     game->outcome = SC_ONGOING;
     game->winner = White;
+    game->halfmove_clock = 0;
+    game->history_len = 0;
+    record_position(game);
 }
 
 int sc_turn(Game *game) {
@@ -54,6 +100,10 @@ int sc_outcome(Game *game) {
 
 int sc_winner(Game *game) {
     return game->winner;
+}
+
+int sc_halfmove_clock(Game *game) {
+    return game->halfmove_clock;
 }
 
 int sc_in_check(Game *game) {
@@ -142,9 +192,13 @@ FfiMoveResult sc_make_move(Game *game, int from, int to, char promo) {
     if (!is_legal_move(&game->board, from, to, special))
         return MOVE_ILLEGAL;
 
+    int resets_clock = (piece.type == Pawn) || (game->board.squares[to].type != Empty);
+
     apply_move(&game->board, from, to, special);
     game->turn = (game->turn == White) ? Black : White;
     game->fullmove_number++;
+    game->halfmove_clock = resets_clock ? 0 : game->halfmove_clock + 1;
+    record_position(game);
     refresh_outcome(game);
 
     return MOVE_OK;

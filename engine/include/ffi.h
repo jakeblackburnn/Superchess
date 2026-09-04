@@ -15,7 +15,7 @@ typedef enum {
     SC_ONGOING   = 0,
     SC_CHECKMATE = 1,
     SC_STALEMATE = 2,
-    SC_DRAW      = 3, // insufficient mating material
+    SC_DRAW      = 3, // insufficient material, fifty-move rule, or threefold repetition
 } FfiOutcome;
 
 typedef enum {
@@ -49,9 +49,17 @@ Game *sc_new_game(void);
 void  sc_free_game(Game *game);
 void  sc_reset_game(Game *game);
 
+// Deep-copies a game (including move-history/draw-detection state) so
+// callers — MCTS in particular — can explore hypothetical moves without
+// mutating the original.
+Game *sc_clone_game(Game *game);
+
 int sc_turn(Game *game);      // Color
 int sc_outcome(Game *game);   // FfiOutcome
 int sc_winner(Game *game);    // Color; valid only when outcome == SC_CHECKMATE
+
+// Plies since the last pawn move or capture (the fifty-move-rule counter).
+int sc_halfmove_clock(Game *game);
 
 // Whether the side to move's king is currently in check (independent of
 // whether they still have legal moves — checkmate is check + no moves).
